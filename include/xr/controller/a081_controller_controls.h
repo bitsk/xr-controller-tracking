@@ -1,7 +1,7 @@
 #ifndef A081_CONTROLLER_CONTROLS_H
 #define A081_CONTROLLER_CONTROLS_H
 
-#include <qiyu/device/a081_controller_wire.h>
+#include <xr/device/a081_controller_wire.h>
 
 /* Input fields from the original serial callback registrations, before JNI
  * hand-specific button/touch/axis remapping. See controls-contract.json.

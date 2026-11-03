@@ -56,7 +56,7 @@ a55aa000ffffffff442b07000000000000000000442b07002000003400000000000000dc
 5. `ParseImpl` 先解码，再按校验后的包类型分发。type-2进入 `ParsePatternIDPackageImpl` `0xff50`，只更新字段/回调；本轮检查的完整该函数中没有 `Write/WriteCmd/WritePattern`。
 6. `QiyiController::start` `0x10824` 再调用 `Run`、SDK虚表 `+4(self,0)` 与 `+0(self,0)`，没有直接发无线启用命令。
 
-`HeartBeatThread` `0xf69e` 在本构建也是空实现。`TimeSync_META/TimeSync_QIYU3/WritePattern` 等导出存在，并不能证明上面的活动接收循环自动调用它们。不能把其他机型或旧库的心跳状态机搬过来。
+`HeartBeatThread` `0xf69e` 在本构建也是空实现。`TimeSync_META/TimeSync_XR3/WritePattern` 等导出存在，并不能证明上面的活动接收循环自动调用它们。不能把其他机型或旧库的心跳状态机搬过来。
 
 ## META 解码必须位于校验和手位解析之前
 
@@ -86,7 +86,7 @@ const unsigned hand = p[0] >> 7;
 | JNI `sendCmd` `0x117dc` | 支持 DFU、start pair=5、unbond=10、cancel pair=12；其余走 ignore | 不用于启动接收，不自动发送 |
 | serial `WriteCmd` `0x949c` | type3控制载荷；cmd8重复写入DFU命令，cmd10额外清理本地配对状态 | 不能泛化为无副作用接口 |
 | `WritePattern` `0x91d8` | type1，五字节载荷为 `{pattern,0,0,0,0}` | 未恢复 pattern 枚举/活动调用处，不把任意 pattern 当 Enable |
-| `TimeSync_QIYU3` `0xf5a8` | 未就绪时先 `CMD_GENERATE_STATIC_SECRET_KEY`（cmd0x10）；另一分支 `WriteSyncWithIMU` | 不是已证明无持久副作用的通用启动握手，本轮不调用 |
+| `TimeSync_XR3` `0xf5a8` | 未就绪时先 `CMD_GENERATE_STATIC_SECRET_KEY`（cmd0x10）；另一分支 `WriteSyncWithIMU` | 不是已证明无持久副作用的通用启动握手，本轮不调用 |
 | `WriteSyncWithIMU` `0x93a8` | 构造8字节同步请求：左 `A5 08 51 00 00 00 00 59`；右 `A5 08 D2 00 00 00 00 DA` | 未在当前启动链找到必要调用，不将查询包作为启动动作发送 |
 | `WriteTimeStampCmd` `0x9ba0` | 来自真实 ctrl-tracking 帧 SOF 的时间回传，见 `input-contract.md` | 保留原厂相机分相调用条件；没有相机帧时不伪造它 |
 
@@ -98,7 +98,7 @@ const unsigned hand = p[0] >> 7;
 
 新增证据位于 `build/xr-tracking-r1/controller/startup-contract/`：
 
-- `startup-functions.json` / `ev_36b644511b75a62df8e1b206b205355b9faaaec00bd783f231531049405e4834`：SerialPortLoop、WriteCmd、WritePattern、TimeSync_QIYU3、HandleTrig、ParsePatternID，全部 resolved/ok。
+- `startup-functions.json` / `ev_36b644511b75a62df8e1b206b205355b9faaaec00bd783f231531049405e4834`：SerialPortLoop、WriteCmd、WritePattern、TimeSync_XR3、HandleTrig、ParsePatternID，全部 resolved/ok。
 - `serial-runtime-functions.json` / `ev_10e0ac7af853bbb34cf0458299935dc47d328313b8e580da7be7e8a5360d897f`：ReceiveThread、WriteSyncWithIMU、Impl/HandleState构造、空Write重载、空HeartBeatThread，全部 resolved/ok。
 - `jni-state-start-command.json` / `ev_385f54b150a9fb86e94ecb01ee34132ddde8917afc9fe9e9ffdb2433cf5ea408`：start、sendCmd、getConnectState、getPairState，全部 resolved/ok。
 - `jni-head-state-callbacks.json` / `ev_81265397ed88f821945bbf002f4d667826a45a9348c8e24d303887e2362747bc`：左右 head/gzll callback，全部 resolved/ok。

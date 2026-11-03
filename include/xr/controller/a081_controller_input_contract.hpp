@@ -1,9 +1,9 @@
 #ifndef A081_CONTROLLER_INPUT_CONTRACT_HPP
 #define A081_CONTROLLER_INPUT_CONTRACT_HPP
 
-#include <qiyu/device/a081_controller_abi.h>
-#include <qiyu/controller/a081_controller_image_abi.hpp>
-#include <qiyu/device/a081_controller_reference.hpp>
+#include <xr/device/a081_controller_abi.h>
+#include <xr/controller/a081_controller_image_abi.hpp>
+#include <xr/device/a081_controller_reference.hpp>
 
 #include <array>
 #include <cstdint>

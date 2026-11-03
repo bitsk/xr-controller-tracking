@@ -34,7 +34,7 @@ int main(int argc, char **argv)
     if (argc != 3 || !end || *end || seconds < 1 || seconds > 600 || argv[1][0] != '/' ||
         !registry || registry[0] != '/' || getuid() != 1000 || geteuid() != 1000 ||
         !identity("/etc/a081-rootfs-id", "a081-steamos-arm64") ||
-        !identity("/proc/device-tree/model", "iQIYI Qiyu MIX (A081)")) {
+        !identity("/proc/device-tree/model", "iQIYI XR MIX (A081)")) {
         fputs("Expected UID1000 A081 SteamOS, private VR_PATHREG_OVERRIDE, absolute libopenvr_api.so and seconds1..600\n", stderr);
         return 22;
     }

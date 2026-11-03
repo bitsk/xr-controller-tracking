@@ -1,5 +1,5 @@
 #define _GNU_SOURCE
-#include <qiyu/device/a081_controller_abi.h>
+#include <xr/device/a081_controller_abi.h>
 
 #include <dlfcn.h>
 #include <errno.h>

@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
-#include <qiyu/device/a081_controller_wire.h>
-#include <qiyu/controller/a081_controller_controls.h>
+#include <xr/device/a081_controller_wire.h>
+#include <xr/controller/a081_controller_controls.h>
 
 #ifndef A081_CONTROLLER_CONTROLS_ONLY
 #include <dlfcn.h>

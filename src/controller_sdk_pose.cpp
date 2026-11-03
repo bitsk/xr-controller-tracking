@@ -2,13 +2,13 @@
 // Native ARM32 bridge to the original A081 SDK. Inputs are live root-owned
 // camera/radio packets; replay, synthetic images and dead-reckoned positions
 // are not input modes. Raw SDK output does not establish OpenVR coordinates.
-#include <qiyu/device/a081_controller_input_wire.h>
-#include <qiyu/controller/a081_controller_image_abi.hpp>
-#include <qiyu/device/a081_camera_timing.hpp>
+#include <xr/device/a081_controller_input_wire.h>
+#include <xr/controller/a081_controller_image_abi.hpp>
+#include <xr/device/a081_camera_timing.hpp>
 #define _Static_assert static_assert
-#include <qiyu/controller/a081_controller_controls.h>
+#include <xr/controller/a081_controller_controls.h>
 #undef _Static_assert
-#include <qiyu/controller/a081_controller_pose_wire.h>
+#include <xr/controller/a081_controller_pose_wire.h>
 
 #include <algorithm>
 #include <array>
@@ -652,7 +652,7 @@ int main(int argc,char **argv)
         require(getuid()==0,"Expected root isolated worker");
         FILE *model=fopen("/proc/device-tree/model","r");require(model,"A081 model unavailable");
         char name[128]{};fread(name,1,sizeof(name)-1,model);fclose(model);
-        require(!std::strcmp(name,"iQIYI Qiyu MIX (A081)"),"Unexpected model");
+        require(!std::strcmp(name,"iQIYI XR MIX (A081)"),"Unexpected model");
         sockaddr_un addr{};addr.sun_family=AF_UNIX;require(std::strlen(socket_path)<sizeof(addr.sun_path),"socket path too long");
         std::strcpy(addr.sun_path,socket_path);
         // The supervisor treats this pathname as readiness. Original SDK

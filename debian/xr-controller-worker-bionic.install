@@ -1,0 +1,2 @@
+build/worker/controller-sdk-* usr/lib/aarch64-linux-gnu/xr/controller/
+build/worker/*.so usr/lib/aarch64-linux-gnu/xr/controller/

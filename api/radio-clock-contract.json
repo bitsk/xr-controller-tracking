@@ -228,7 +228,7 @@
       "observed_in_binary_callers": [],
       "caveat": "REA found no incoming references/callers in this serial library; the inspected SerialPortLoop/ReceiveThread and JNI startup do not call it. Export visibility alone does not establish active use."
     },
-    "TimeSync_QIYU3": {
+    "TimeSync_XR3": {
       "elf": "0xf5a8",
       "behavior": "If its encryption flag is clear, sends command0x10 GENERATE_STATIC_SECRET_KEY; otherwise marks the pending request and sends WriteSyncWithIMU. The availability checks do not wait for a fitted model in this binary.",
       "observed_in_binary_callers": [],

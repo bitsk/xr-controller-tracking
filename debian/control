@@ -1,0 +1,27 @@
+Source: xr-controller-tracking
+Section: misc
+Priority: optional
+Maintainer: openKylin XR SIG <xr@lists.openkylin.top>
+Build-Depends: debhelper-compat (= 13), python3, clang, g++, libopenvr-dev, libxr-device-dev, xr-hexagonrpc-source
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Vcs-Git: https://gitee.com/bigbits/xr-controller-tracking.git
+Vcs-Browser: https://gitee.com/bigbits/xr-controller-tracking
+
+Package: xr-controller-worker-bionic
+Architecture: arm64
+Depends: ${misc:Depends}, xr-vendor-a081-controller
+Description: XR ARM32 Bionic compatibility worker for ARM64 hosts
+ Independently maintained XR component for openKylin integration.
+
+Package: libxr-controller-dev
+Architecture: all
+Depends: ${misc:Depends}
+Description: XR controller input and pose protocol headers
+ Independently maintained XR component for openKylin integration.
+
+Package: xr-controller-tools
+Architecture: arm64
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: XR controller observation tools
+ Reads existing controller producer outputs without acquiring cameras.
