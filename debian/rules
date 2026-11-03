@@ -4,8 +4,12 @@ include /usr/share/dpkg/default.mk
 	dh $@ --buildsystem=none
 override_dh_auto_build-arch:
 	mkdir -p build
-	$(CXX) -O2 -std=c++17 -Iinclude -I$(if $(XR_OPENVR_INCLUDE_DIR),$(XR_OPENVR_INCLUDE_DIR),/usr/include/openvr) -I$(if $(XR_DEVICE_INCLUDE_DIR),$(XR_DEVICE_INCLUDE_DIR),/usr/include) tools/controller-observe.cpp -ldl -o build/xr-controller-observe
+	$(DEB_HOST_GNU_TYPE)-g++ -O2 -std=c++17 -Iinclude -I$(if $(XR_OPENVR_INCLUDE_DIR),$(XR_OPENVR_INCLUDE_DIR),/usr/include/openvr) -I$(if $(XR_DEVICE_INCLUDE_DIR),$(XR_DEVICE_INCLUDE_DIR),/usr/include) tools/controller-observe.cpp -ldl -o build/xr-controller-observe
 	if dh_listpackages -a | grep -qx xr-controller-worker-bionic; then python3 packaging/build-debian.py; fi
+override_dh_strip:
+	dh_strip -Xusr/lib/aarch64-linux-gnu/xr/controller/
+override_dh_dwz:
+	dh_dwz -Xusr/lib/aarch64-linux-gnu/xr/controller/
 override_dh_shlibdeps:
 	dh_shlibdeps -Xusr/lib/aarch64-linux-gnu/xr/controller/
 override_dh_auto_clean:

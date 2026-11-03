@@ -12,7 +12,7 @@ a.output.mkdir(parents=True);commands=[]
 for src,name in [('controller_sdk_pose.cpp','controller-sdk-pose'),('controller_sdk_imu.c','controller-sdk-imu'),('controller_sdk_probe.c','controller-sdk-probe')]:
  compiler=cc if src.endswith('.cpp') else tools/'armv7a-linux-androideabi28-clang'
  prefixes=[(Path.cwd(),'/build'),(r.parent,'/usr/src'),(a.ndk,'/opt/android-ndk'),(r,'/usr/src/xr-controller-tracking'),(a.device,'/usr/src/xr-device-io')]
- args=[str(compiler),'-fdebug-compilation-dir','/build',*[flag+str(src)+'='+dest for src,dest in prefixes for flag in ['-fdebug-prefix-map=']],'-O2','-g','-Wall','-Wextra','-fPIE','-pie','-I'+str(r/'include'),'-I'+str(device_include),str(r/'src'/src)]
+ args=[str(compiler),'-fdebug-compilation-dir','/build',*[flag+str(src)+'='+dest for src,dest in prefixes for flag in ['-fdebug-prefix-map=']],'-O2','-g0','-Wall','-Wextra','-fPIE','-pie','-I'+str(r/'include'),'-I'+str(device_include),str(r/'src'/src)]
  if src.endswith('.cpp'):args+=['-std=c++17','-nostdlib++',str(a.stock_cpp)]
  args+=['-ldl','-o',str(a.output/name)];subprocess.run(args,check=True);commands.append(args)
 rpc=a.hexagonrpc_source
@@ -20,7 +20,7 @@ client=sorted((rpc/'libhexagonrpc').rglob('*.c'))
 daemon=[rpc/'hexagonrpcd'/name for name in ['apps_mem.c','apps_std.c','interface/adsp_default_listener.c','interface/adsp_listener.c','interface/apps_mem.c','interface/apps_std.c','hexagonfs.c','hexagonfs_mapped.c','hexagonfs_plat_subtype_name.c','hexagonfs_virt_dir.c','iobuffer.c','listener.c','localctl.c','rpcd_builder.c']]
 if not (rpc/'include/libhexagonrpc/error.h').is_file():p.error('Install xr-hexagonrpc-source or provide --hexagonrpc-source')
 for src,name in [('cdsprpc-mainline.c','libcdsprpc.so'),('snpe-runtime-override.c','liba081-snpe-runtime.so')]:
- args=[str(tools/'armv7a-linux-androideabi28-clang'),'-O2','-fPIC','-shared','-Wl,-z,defs','-I'+str(r/'include'),'-I'+str(rpc/'include'),'-I'+str(rpc/'hexagonrpcd'),str(r/'src'/src)]
+ args=[str(tools/'armv7a-linux-androideabi28-clang'),*[flag+str(src)+'='+dest for src,dest in prefixes+[(rpc,'/usr/src/xr-hexagonrpc')] for flag in ['-ffile-prefix-map=']],'-O2','-fPIC','-shared','-Wl,-z,defs','-I'+str(r/'include'),'-I'+str(rpc/'include'),'-I'+str(rpc/'hexagonrpcd'),str(r/'src'/src)]
  if src=='cdsprpc-mainline.c':args += [str(q) for q in client+daemon]
  args+=['-ldl','-o',str(a.output/name)]
  subprocess.run(args,check=True);commands.append(args)
