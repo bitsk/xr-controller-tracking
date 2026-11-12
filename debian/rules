@@ -11,6 +11,6 @@ override_dh_strip:
 override_dh_dwz:
 	dh_dwz -Xusr/lib/aarch64-linux-gnu/xr/controller/
 override_dh_shlibdeps:
-	dh_shlibdeps -Xusr/lib/aarch64-linux-gnu/xr/controller/
+	dh_shlibdeps -Xusr/lib/aarch64-linux-gnu/xr/controller/ $(if $(XR_CROSS_LIBDIR),-l$(XR_CROSS_LIBDIR)) -- $(if $(XR_CROSS_SHLIBS),-L$(XR_CROSS_SHLIBS))
 override_dh_auto_clean:
 	rm -rf build
