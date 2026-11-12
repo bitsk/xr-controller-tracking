@@ -652,7 +652,7 @@ int main(int argc,char **argv)
         require(getuid()==0,"Expected root isolated worker");
         FILE *model=fopen("/proc/device-tree/model","r");require(model,"A081 model unavailable");
         char name[128]{};fread(name,1,sizeof(name)-1,model);fclose(model);
-        require(!std::strcmp(name,"iQIYI XR MIX (A081)"),"Unexpected model");
+        require(!std::strcmp(name,"iQIYI Qiyu MIX (A081)"),"Unexpected model");
         sockaddr_un addr{};addr.sun_family=AF_UNIX;require(std::strlen(socket_path)<sizeof(addr.sun_path),"socket path too long");
         std::strcpy(addr.sun_path,socket_path);
         // The supervisor treats this pathname as readiness. Original SDK

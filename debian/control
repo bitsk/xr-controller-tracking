@@ -5,8 +5,8 @@ Maintainer: openKylin XR SIG <xr@lists.openkylin.top>
 Build-Depends: debhelper-compat (= 13), python3, clang, g++, libopenvr-dev, libxr-device-dev, xr-hexagonrpc-source
 Standards-Version: 4.7.0
 Rules-Requires-Root: no
-Vcs-Git: https://gitee.com/bigbits/xr-controller-tracking.git
-Vcs-Browser: https://gitee.com/bigbits/xr-controller-tracking
+Vcs-Git: https://github.com/bitsk/xr-controller-tracking.git
+Vcs-Browser: https://github.com/bitsk/xr-controller-tracking
 
 Package: xr-controller-worker-bionic
 Architecture: arm64
