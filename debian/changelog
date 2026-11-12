@@ -1,3 +1,9 @@
+xr-controller-tracking (0.1.4) unstable; urgency=medium
+
+  * Package the bounded SDK log shim and consume the canonical FastRPC UAPI.
+
+ -- bits <bigbits@hackx.cc>  Thu, 12 Nov 2026 20:22:31 +0800
+
 xr-controller-tracking (0.1.3) unstable; urgency=medium
 
   * Support the locked ARM32 NDK compiler in native worker packages.

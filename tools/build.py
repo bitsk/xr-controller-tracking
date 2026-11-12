@@ -3,7 +3,7 @@
 import argparse,hashlib,json,subprocess
 from pathlib import Path
 r=Path(__file__).resolve().parents[1]
-p=argparse.ArgumentParser();p.add_argument('--ndk',required=True,type=Path);g=p.add_mutually_exclusive_group(required=True);g.add_argument('--stock-cpp',type=Path);g.add_argument('--vendor-cache',type=Path);p.add_argument('--device',type=Path,default=r.parent/'xr-device-io');p.add_argument('--device-include',type=Path);p.add_argument('--hexagonrpc-source',type=Path,default=Path('/usr/share/xr-hexagonrpc/source'));p.add_argument('--output',required=True,type=Path);a=p.parse_args();device_include=a.device_include or (Path('/usr/include') if Path('/usr/include/xr/device').exists() else a.device/'include')
+p=argparse.ArgumentParser();p.add_argument('--ndk',required=True,type=Path);g=p.add_mutually_exclusive_group(required=True);g.add_argument('--stock-cpp',type=Path);g.add_argument('--vendor-cache',type=Path);p.add_argument('--device',type=Path,default=r.parent/'xr-device-io');p.add_argument('--device-include',type=Path);p.add_argument('--hexagonrpc-source',type=Path,default=Path('/usr/share/xr-hexagonrpc/source'));p.add_argument('--kernel-uapi',type=Path,default=Path('/usr/include/xr-kernel'));p.add_argument('--output',required=True,type=Path);a=p.parse_args();device_include=a.device_include or (Path('/usr/include') if Path('/usr/include/xr/device').exists() else a.device/'include')
 if a.vendor_cache:a.stock_cpp=a.vendor_cache/'controller/root/system/lib/libc++_shared.so'
 if a.output.exists():p.error('Choose a new output directory')
 tools=a.ndk/'toolchains/llvm/prebuilt/linux-x86_64/bin';cc=tools/'armv7a-linux-androideabi28-clang++'
@@ -20,9 +20,13 @@ client=sorted((rpc/'libhexagonrpc').rglob('*.c'))
 daemon=[rpc/'hexagonrpcd'/name for name in ['apps_mem.c','apps_std.c','interface/adsp_default_listener.c','interface/adsp_listener.c','interface/apps_mem.c','interface/apps_std.c','hexagonfs.c','hexagonfs_mapped.c','hexagonfs_plat_subtype_name.c','hexagonfs_virt_dir.c','iobuffer.c','listener.c','localctl.c','rpcd_builder.c']]
 if not (rpc/'include/libhexagonrpc/error.h').is_file():p.error('Install xr-hexagonrpc-source or provide --hexagonrpc-source')
 for src,name in [('cdsprpc-mainline.c','libcdsprpc.so'),('snpe-runtime-override.c','liba081-snpe-runtime.so')]:
- args=[str(tools/'armv7a-linux-androideabi28-clang'),*[flag+str(src)+'='+dest for src,dest in prefixes+[(rpc,'/usr/src/xr-hexagonrpc')] for flag in ['-fdebug-prefix-map=']],'-O2','-fPIC','-shared','-Wl,-z,defs','-I'+str(r/'include'),'-I'+str(rpc/'include'),'-I'+str(rpc/'hexagonrpcd'),str(r/'src'/src)]
+ args=[str(tools/'armv7a-linux-androideabi28-clang'),*[flag+str(src)+'='+dest for src,dest in prefixes+[(rpc,'/usr/src/xr-hexagonrpc')] for flag in ['-fdebug-prefix-map=']],'-O2','-fPIC','-shared','-Wl,-z,defs','-I'+str(r/'include'),'-I'+str(rpc/'include'),'-I'+str(rpc/'hexagonrpcd'),'-I'+str(a.kernel_uapi),str(r/'src'/src)]
  if src=='cdsprpc-mainline.c':args += [str(q) for q in client+daemon]
  args+=['-ldl','-o',str(a.output/name)]
  subprocess.run(args,check=True);commands.append(args)
+log_source=r/'src/sdk-log-capture.cpp'
+args=[str(cc),'-std=c++17','-O2','-g0','-fPIC','-shared','-fno-exceptions','-fno-rtti','-nostdlib++','-Wl,-z,relro,-z,now','-Wl,--no-undefined','-Wl,-soname,liba081-sdk-log.so','-DA081_LOG_SOURCE_SHA="'+hashlib.sha256(log_source.read_bytes()).hexdigest()+'"',str(log_source),'-Wl,--no-as-needed','-llog','-Wl,--as-needed','-ldl','-o',str(a.output/'liba081-sdk-log.so')]
+subprocess.run(args,check=True);commands.append(args)
+(a.output/'libcdsprpc_system.so').symlink_to('libcdsprpc.so')
 files={q.name:hashlib.sha256(q.read_bytes()).hexdigest() for q in a.output.iterdir() if q.is_file()}
 (a.output/'build-manifest.json').write_text(json.dumps({'commands':commands,'files_sha256':files,'stock_cpp_sha256':hashlib.sha256(a.stock_cpp.read_bytes()).hexdigest(),'vendor_cache_receipt_sha256':hashlib.sha256((a.vendor_cache/'receipt.json').read_bytes()).hexdigest() if a.vendor_cache else None,'device_tested':False},indent=2)+'\n')
