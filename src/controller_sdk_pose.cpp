@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Native ARM32 bridge to the original A081 SDK. Inputs are live root-owned
+// Native ARM32 bridge to the pinned MIX and VR700 SDKs. Inputs are live root-owned
 // camera/radio packets; replay, synthetic images and dead-reckoned positions
 // are not input modes. Raw SDK output does not establish OpenVR coordinates.
 #include <xr/device/a081_controller_input_wire.h>
@@ -210,7 +210,8 @@ struct Sdk {
     a081_controller_push_imu_fn imu{};
     a081_controller_get_pose_fn pose{};
     a081_controller::PushImages images{};
-    explicit Sdk(const char *path)
+    const bool vr700;
+    explicit Sdk(const char *path, bool vr700_model):vr700(vr700_model)
     {
         void *lib = dlopen(path, RTLD_NOW|RTLD_LOCAL);
         if (!lib) throw std::runtime_error(dlerror());
@@ -221,17 +222,18 @@ struct Sdk {
         BuildId id{base,{}}; dl_iterate_phdr(build_id,&id);
         const bool old=!std::strcmp(id.hex,A081_CONTROLLER_SDK_BUILD_ID);
         const bool live=!std::strcmp(id.hex,"9e04a7620e90dba0c5c56e67bd1c9bcb740b9256");
-        const uintptr_t factory_offset=old ? A081_CONTROLLER_FACTORY_OFFSET:0x380e9c;
-        const uintptr_t vtable_offset=old ? A081_CONTROLLER_VTABLE_OFFSET:0x7a63b0;
-        require((old || live) && (uintptr_t(symbol)&1) &&
+        const bool dream=!std::strcmp(id.hex,"7cd86fb5adcc055e98f3c5d12e9d96d4dd58a5cb");
+        const uintptr_t factory_offset=vr700 ? 0x391e54 : old ? A081_CONTROLLER_FACTORY_OFFSET:0x380e9c;
+        const uintptr_t vtable_offset=vr700 ? 0x7e04cc : old ? A081_CONTROLLER_VTABLE_OFFSET:0x7a63b0;
+        require((vr700 ? dream : old || live) && (uintptr_t(symbol)&1) &&
             (uintptr_t(symbol)&~uintptr_t(1))-base==factory_offset,"SDK identity mismatch");
         a081_controller_factory_fn factory; std::memcpy(&factory,&symbol,sizeof(factory));
         object=factory(A081_HAND_BOTH,2); require(object,"SDK factory null");
         auto *vt=*static_cast<const uintptr_t **>(object);
         require(uintptr_t(vt)==base+vtable_offset,"SDK vtable mismatch");
-        const std::pair<unsigned,uintptr_t> entries[]={{0,old?0x384460u:0x374130u},{4,old?0x38451cu:0x3741ecu},
-            {0x0c,old?0x3845a4u:0x374274u},{0x18,old?0x384df8u:0x374ac8u},
-            {0x1c,old?0x3850d8u:0x374da8u},{0x34,old?0x3865b0u:0x376210u}};
+        const std::pair<unsigned,uintptr_t> entries[]={{0,vr700?0x395108u:old?0x384460u:0x374130u},{4,vr700?0x3951c4u:old?0x38451cu:0x3741ecu},
+            {0x0c,vr700?0x395234u:old?0x3845a4u:0x374274u},{0x18,vr700?0x395958u:old?0x384df8u:0x374ac8u},
+            {0x1c,vr700?0x395c30u:old?0x3850d8u:0x374da8u},{0x34,vr700?0x3965c8u:old?0x3865b0u:0x376210u}};
         for (auto e:entries) require((vt[e.first/4]&1) &&
             (vt[e.first/4]&~uintptr_t(1))-base==e.second,"SDK method mismatch");
         std::memcpy(&hmd,vt+0x0c/4,sizeof(hmd)); std::memcpy(&imu,vt+0x18/4,sizeof(imu));
@@ -276,7 +278,7 @@ struct Client { int fd{-1}; u64 sequence{}; unsigned type{}; };
 
 class Worker {
 public:
-    Worker(const char *library,int output,bool candidate_coordinates,const char *snapshot_directory):sdk(library), output_fd(output), initial(anchor()), candidate_profile(candidate_coordinates), snapshot_directory_(snapshot_directory ? snapshot_directory : "")
+    Worker(const char *library,int output,bool candidate_coordinates,const char *snapshot_directory,bool vr700):sdk(library,vr700), output_fd(output), initial(anchor()), candidate_profile(candidate_coordinates), snapshot_directory_(snapshot_directory ? snapshot_directory : "")
     {
         require(initial.uncertainty<=100000,"clock anchor uncertainty");
         session=now(CLOCK_MONOTONIC);
@@ -323,7 +325,17 @@ public:
         Hand &h=hands[p.hand];
         if (p.type==2) {
             const auto previous=h.controls;
-            a081_controller_controls_update(&h.controls,&p,r.completion_monotonic_ns,r.header.sequence);
+            if (sdk.vr700) {
+                // VR700 GetPatternIDPackageInfo copies the complete power byte;
+                // it never applies the newer MIX firmware's GZLL nibble split.
+                const uint8_t version[]={p.payload[24],p.payload[23],p.payload[22]};
+                const auto power=p.payload[25];
+                std::memcpy(h.controls.head_version,version,sizeof(version));
+                h.controls.pattern_known=1;
+                h.controls.gzll_raw_state=h.controls.gzll_state_known=0;
+                if(power<6) { h.controls.head_power_state=power;h.controls.stock_enable=power==3; }
+                if(!h.controls.stock_enable)a081_controller_controls_release(&h.controls);
+            } else a081_controller_controls_update(&h.controls,&p,r.completion_monotonic_ns,r.header.sequence);
             // ParsePatternID clears ctrl state only for the complete byte04,
             // before >=25 firmware splits GZLL/head nibbles. 0x34 is different.
             if(p.payload[25]==4)state(p.hand,0,"stock_full_status04");
@@ -345,18 +357,24 @@ public:
             invalidate(p.hand,"imu_receipt_expired");h.stale=true;
         }
         a081_controller_imu_input input{};u64 wire{};
-        a081_controller_unpack_type7(&p,h.controls.head_version[2],&input,&wire);
+        // VR700 always uses 30.5us ticks, including firmware versions >=25.
+        a081_controller_unpack_type7(&p,sdk.vr700 ? 0 : h.controls.head_version[2],&input,&wire);
         bool nonzero=false;
         for (unsigned i=0;i<4;++i) nonzero|=input.values[i]!=0;
         // Current serial ParseImuPreInt: ctrl power5 for nonzero quaternion,
         // power7 for allzero, then head-power callback from cached GZLL.
         // JNI only stores5/7. Its sleep cache must not become a fresh XR pose.
-        state(p.hand,nonzero?5:7,nonzero?"stock_type7_awake":"stock_type7_sleep");
+        if(sdk.vr700) {
+            const unsigned power=p.payload[1]&15;
+            if(power<8)state(p.hand,power,"vr700_type7_power_callback");
+        } else state(p.hand,nonzero?5:7,nonzero?"stock_type7_awake":"stock_type7_sleep");
         unsigned power=h.controls.head_power_state;
-        if(h.controls.head_version[2]<25)power=3;
-        else if(h.controls.gzll_raw_state<=2)power=1;
-        else if(h.controls.gzll_raw_state==3)power=3;
-        else if(h.controls.gzll_raw_state==4)power=4;
+        if(!sdk.vr700) {
+            if(h.controls.head_version[2]<25)power=3;
+            else if(h.controls.gzll_raw_state<=2)power=1;
+            else if(h.controls.gzll_raw_state==3)power=3;
+            else if(h.controls.gzll_raw_state==4)power=4;
+        }
         const bool enabled=power==3;
         if(enabled!=bool(h.controls.stock_enable))invalidate(p.hand,"type7_head_power_changed");
         h.controls.head_power_state=uint8_t(power);h.controls.stock_enable=enabled;
@@ -650,16 +668,17 @@ int main(int argc,char **argv)
     int server=-1,status=1;std::array<Client,4> clients{};
     try {
         require(getuid()==0,"Expected root isolated worker");
-        FILE *model=fopen("/proc/device-tree/model","r");require(model,"A081 model unavailable");
+        FILE *model=fopen("/proc/device-tree/model","r");require(model,"device model unavailable");
         char name[128]{};fread(name,1,sizeof(name)-1,model);fclose(model);
-        require(!std::strcmp(name,"iQIYI Qiyu MIX (A081)"),"Unexpected model");
+        const bool vr700=!std::strcmp(name,"iQIYI VR700 / Qiyu DREAM Pro");
+        require(vr700 || !std::strcmp(name,"iQIYI Qiyu MIX (A081)"),"Unexpected model");
         sockaddr_un addr{};addr.sun_family=AF_UNIX;require(std::strlen(socket_path)<sizeof(addr.sun_path),"socket path too long");
         std::strcpy(addr.sun_path,socket_path);
         // The supervisor treats this pathname as readiness. Original SDK
         // factory/start and the first pose query can block: complete them
         // before exposing a socket, otherwise real radio input queues until
         // its freshness deadline has already expired.
-        Worker worker(library,output,candidate_coordinates,snapshot_directory);
+        Worker worker(library,output,candidate_coordinates,snapshot_directory,vr700);
         worker.poses();
         server=socket(AF_UNIX,SOCK_SEQPACKET|SOCK_CLOEXEC|SOCK_NONBLOCK,0);require(server>=0,"socket");
         umask(0077);require(!bind(server,reinterpret_cast<sockaddr *>(&addr),sizeof(addr)),"bind new input socket");
