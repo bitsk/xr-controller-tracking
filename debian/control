@@ -10,7 +10,7 @@ Vcs-Browser: https://github.com/bitsk/xr-controller-tracking
 
 Package: xr-controller-worker-bionic
 Architecture: arm64
-Depends: ${misc:Depends}, xr-vendor-a081-controller
+Depends: ${misc:Depends}
 Description: XR ARM32 Bionic compatibility worker for ARM64 hosts
  Independently maintained XR component for openKylin integration.
 

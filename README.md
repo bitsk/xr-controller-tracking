@@ -17,4 +17,6 @@ NDK、原厂 SDK、SNPE 与固件由使用者提供；仓库仅包含桥接代�
 
 本仓库包含独立的 `debian/` 配方。使用目标发行线的干净构建环境运行 `dpkg-buildpackage -us -uc -b`，预先准备 Build-Depends 和离线构建输入。包构建、目标系统安装和设备验收分别记录。
 
+worker 包不依赖特定型号的 vendor 包。SDK/Bionic 闭包由显式设备 profile 提供并按摘要校验；worker 另行核对设备型号、SDK build-id、factory 和 vtable。VR700 私有闭包及每台设备的标定必须单独导入，不能用 MIX 资产替代。
+
 当前迁移不自动启用竞争采集、切换活动运行时或写设备启动分区；已有验证基线继续保留。
