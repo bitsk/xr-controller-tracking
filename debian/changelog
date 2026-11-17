@@ -1,3 +1,13 @@
+xr-controller-tracking (0.1.8) unstable; urgency=medium
+
+  * Preserve the measured camera clock bracket without an unsupported 5us
+    whole-frame rejection threshold.
+  * Accept the native historical HMD query without a previous-only 20ms gate;
+    retain the real record epoch and normalize finite nonzero rotation.
+  * Pass the camera query epoch to SDK HMD input, matching the original JNI.
+
+ -- bits <bigbits@hackx.cc>  Wed, 18 Nov 2026 00:46:06 +0800
+
 xr-controller-tracking (0.1.7) unstable; urgency=medium
 
   * Suppress SDK readiness when termination was requested during initialization.

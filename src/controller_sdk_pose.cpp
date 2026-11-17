@@ -419,7 +419,7 @@ public:
             f.ctrl_control_applied_boottime_ns && f.ctrl_control_applied_boottime_ns<f.ctrl_sof_boottime_ns;
         if (!phase_valid || !exposure_valid || !fresh(f.ctrl_exposure_start_boottime_ns,a.boot) ||
             (f.flags & ~A081_CONTROLLER_FRAME_RAW_QVR_POSE)!=expected_flags || f.view_width!=640 || f.height!=480 || f.stride_bytes!=1280 ||
-            f.mosaic_bytes[0]!=614400 || f.mosaic_bytes[1]!=614400 || f.camera_clock_bracket_ns>=5000 ||
+            f.mosaic_bytes[0]!=614400 || f.mosaic_bytes[1]!=614400 ||
             !fresh(f.ctrl_sof_boottime_ns,a.boot) || !fresh(f.tracking_sof_boottime_ns,a.boot) ||
             (f.ctrl_sof_boottime_ns>f.tracking_sof_boottime_ns ? f.ctrl_sof_boottime_ns-f.tracking_sof_boottime_ns :
              f.tracking_sof_boottime_ns-f.ctrl_sof_boottime_ns)>=5*ms ||
@@ -428,13 +428,20 @@ public:
         }
         for (unsigned i=0;i<2;++i)
             require(u64(f.mosaic_offsets[i])+f.mosaic_bytes[i]<=lease->bytes,"mosaic outside memfd");
-        // Preserve the HMD sample time. The image uses stock exposure-start
-        // time, while the input retains raw QCFT SOF for independent checks.
+        // Native history chooses the real record nearest the exposure query.
+        // Its measured epoch remains in the input for diagnostics. As in the
+        // original Controller JNI, SDK HMD input uses the camera query epoch;
+        // no synthetic measured timestamp or prediction is written back.
+        double hmd_norm=0;
+        for(double x:f.hmd_orientation_xyzw) hmd_norm+=x*x;
         const bool hmd_valid=(f.flags&A081_CONTROLLER_FRAME_RAW_QVR_POSE) &&
-            fresh(f.hmd_pose_boottime_ns,f.ctrl_exposure_start_boottime_ns,20*ms) &&
-            finite(f.hmd_position) && finite(f.hmd_orientation_xyzw) && quaternion(f.hmd_orientation_xyzw);
+            f.hmd_pose_boottime_ns && f.hmd_pose_boottime_ns<=a.boot &&
+            finite(f.hmd_position) && finite(f.hmd_orientation_xyzw) &&
+            std::isfinite(hmd_norm) && hmd_norm>0;
         if (hmd_valid) {
-            const int hmd_rc=sdk.hmd(sdk.object,f.hmd_position,f.hmd_orientation_xyzw,f.hmd_pose_boottime_ns);
+            double normalized[4];const auto length=std::sqrt(hmd_norm);
+            for(unsigned i=0;i<4;++i) normalized[i]=f.hmd_orientation_xyzw[i]/length;
+            const int hmd_rc=sdk.hmd(sdk.object,f.hmd_position,normalized,f.ctrl_exposure_start_boottime_ns);
             require(hmd_rc==1,"SDK HMD input return");
         }
         const unsigned phase=f.ctrl_exposure_phase;
