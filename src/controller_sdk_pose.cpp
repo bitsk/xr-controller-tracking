@@ -48,6 +48,7 @@ namespace {
 using u64 = uint64_t;
 constexpr u64 ms = 1000000, max_age = 100 * ms;
 volatile sig_atomic_t stopping;
+struct StartupCancelled {};
 bool detailed_logging = true;
 void stopped(int) { stopping = 1; }
 
@@ -682,7 +683,11 @@ int main(int argc,char **argv)
         // before exposing a socket, otherwise real radio input queues until
         // its freshness deadline has already expired.
         Worker worker(library,output,candidate_coordinates,snapshot_directory,vr700);
+        if (stopping) throw StartupCancelled{};
         worker.poses();
+        // A stop may arrive while the original SDK blocks in initialization.
+        // Do not publish a late readiness event from the cancellation path.
+        if (stopping) throw StartupCancelled{};
         server=socket(AF_UNIX,SOCK_SEQPACKET|SOCK_CLOEXEC|SOCK_NONBLOCK,0);require(server>=0,"socket");
         umask(0077);require(!bind(server,reinterpret_cast<sockaddr *>(&addr),sizeof(addr)),"bind new input socket");
         require(!chmod(socket_path,0600),"input socket permissions");
@@ -745,6 +750,9 @@ int main(int argc,char **argv)
         }
         worker.source_closed(A081_CONTROLLER_INPUT_RADIO);
         worker.poses();worker.summary();status=0;
+    } catch(const StartupCancelled &) {
+        event("controller_startup_cancelled","stop_requested_before_input_ready");
+        status=0;
     } catch(const std::exception &e) {
         std::fprintf(stderr,"controller-sdk-pose: %s (errno=%d)\n",e.what(),errno);
     }
