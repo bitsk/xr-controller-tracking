@@ -8,7 +8,8 @@
  * does not turn SDK confidence into proof of optical position tracking.
  */
 #define A081_CONTROLLER_POSE_MAGIC UINT32_C(0x43503841)
-#define A081_CONTROLLER_POSE_VERSION 1u
+/* Current transport carries SDK pose and receipt-aged radio controls. */
+#define A081_CONTROLLER_POSE_VERSION 2u
 #define A081_CONTROLLER_POSE_MAX_AGE_NS UINT64_C(100000000)
 #define A081_CONTROLLER_CONNECTED (1u << 0)
 #define A081_CONTROLLER_ORIENTATION_VALID (1u << 1)
@@ -20,10 +21,25 @@
  * its confidence0.1 floor and submitted camera frames are not optical proof.
  */
 #define A081_CONTROLLER_OPTICAL_VALID (1u << 5)
+/* controls/joystick hold fresh Nordic type-7 values, independent of pose. */
+#define A081_CONTROLLER_CONTROLS_VALID (1u << 6)
 #define A081_CONTROLLER_POSE_REQUIRED_FLAGS (A081_CONTROLLER_CONNECTED | \
     A081_CONTROLLER_ORIENTATION_VALID | A081_CONTROLLER_POSITION_VALID | \
     A081_CONTROLLER_CLOCK_VALID | A081_CONTROLLER_SDK_POSE)
-#define A081_CONTROLLER_POSE_KNOWN_FLAGS 63u
+#define A081_CONTROLLER_POSE_KNOWN_FLAGS 127u
+
+/* controls: bits0-7 mode1 p[27]&0xf0 buttons, 8-11 p[27]&15 touch,
+ * 12-15 p[28]&15 index finger, 16-19 p[28]>>4 middle finger,
+ * 24-28 a081_controller_control_fields valid mask.
+ * joystick: bits0-7 int8 p[28] (vertical), bits8-15 int8 p[27] (horizontal) (mode2).
+ */
+#define A081_CONTROLLER_CONTROLS_BUTTONS(c) ((c) & 0xf0u)
+#define A081_CONTROLLER_CONTROLS_TOUCH(c) (((c) >> 8) & 15u)
+#define A081_CONTROLLER_CONTROLS_INDEX(c) (((c) >> 12) & 15u)
+#define A081_CONTROLLER_CONTROLS_MIDDLE(c) (((c) >> 16) & 15u)
+#define A081_CONTROLLER_CONTROLS_MASK(c) (((c) >> 24) & 31u)
+#define A081_CONTROLLER_CONTROLS_MODE1 15u
+#define A081_CONTROLLER_CONTROLS_JOYSTICK 16u
 #define A081_CONTROLLER_PROFILE_UNVERIFIED 0u
 /* Meters and xyzw orientation already transformed to the SAME raw OpenVR
  * origin/basis used by the running QVR HMD, with a verified SDK transform.
@@ -37,10 +53,10 @@ struct a081_controller_pose_packet {
     uint32_t hand; /* 0 left, 1 right */
     uint32_t coordinate_profile;
     float confidence;
-    uint32_t reserved0;
+    uint32_t controls;
     float position[3];
     float orientation_xyzw[4];
-    uint32_t reserved1;
+    uint32_t joystick;
 };
 #ifdef __cplusplus
 static_assert(sizeof(a081_controller_pose_packet) == 96, "controller pose wire size");

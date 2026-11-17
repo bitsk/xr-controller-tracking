@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSL-1.0
 #pragma once
 #include <xr/controller/a081_controller_controls.h>
-#include <xr/controller/production-v2/a081_controller_pose_wire.h>
+#include <xr/controller/a081_controller_pose_wire.h>
 
 /* Publish receipt-aged radio controls independently of SDK pose validity.
  * Recompute the multiplexed field mask for every packet: producing new poses

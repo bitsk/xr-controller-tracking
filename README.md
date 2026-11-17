@@ -20,3 +20,5 @@ NDK、原厂 SDK、SNPE 与固件由使用者提供；仓库仅包含桥接代�
 worker 包不依赖特定型号的 vendor 包。SDK/Bionic 闭包由显式设备 profile 提供并按摘要校验；worker 另行核对设备型号、SDK build-id、factory 和 vtable。VR700 私有闭包及每台设备的标定必须单独导入，不能用 MIX 资产替代。
 
 当前迁移不自动启用竞争采集、切换活动运行时或写设备启动分区；已有验证基线继续保留。
+
+生产者和消费者统一使用 `include/xr/controller/a081_controller_pose_wire.h` 的当前 96 字节协议，按键和摇杆按各自接收时间过期，独立于定位有效性。接口变化同步更新整条链路，历史只保存在 Git。
