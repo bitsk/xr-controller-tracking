@@ -8,7 +8,7 @@
 #define _Static_assert static_assert
 #include <xr/controller/a081_controller_controls.h>
 #undef _Static_assert
-#include <xr/controller/a081_controller_pose_wire.h>
+#include <xr/controller/a081_controller_pose_controls.h>
 
 #include <algorithm>
 #include <array>
@@ -288,7 +288,6 @@ public:
         Hand &h=hands[side];
         h.last_clock=h.last_imu=h.last_image=h.last_hmd=0;
         h.epoch_images=0;++h.epoch;h.epoch_start_boot=now(CLOCK_BOOTTIME);
-        a081_controller_controls_release(&h.controls);
         event("controller_tracking_reset",reason,side);
     }
     void state(unsigned side,unsigned value,const char *reason)
@@ -297,6 +296,7 @@ public:
         if(h.state==value)return;
         const auto before=h.state;
         invalidate(side,reason);h.state=value;
+        a081_controller_controls_release(&h.controls);
         std::printf("{\"kind\":\"controller_state\",\"hand\":%u,\"from\":%u,\"to\":%u,\"reason\":\"%s\",\"epoch\":%llu}\n",
                     side,before,value,reason,(unsigned long long)h.epoch);
     }
@@ -340,8 +340,10 @@ public:
             // before >=25 firmware splits GZLL/head nibbles. 0x34 is different.
             if(p.payload[25]==4)state(p.hand,0,"stock_full_status04");
             if(!previous.pattern_known || std::memcmp(previous.head_version,h.controls.head_version,3) ||
-               previous.stock_enable!=h.controls.stock_enable)
+               previous.stock_enable!=h.controls.stock_enable) {
                 invalidate(p.hand,"pattern_or_enable_changed");
+                a081_controller_controls_release(&h.controls);
+            }
             if(h.controls.head_power_state>=6) {
                 // The stock parser suppresses this invalid head-power callback.
                 h.controls.head_power_state=previous.head_power_state;
@@ -610,6 +612,7 @@ void Worker::output_pose(unsigned side,const Anchor &a,u64 t,const double *p,con
     packet.sample_monotonic_ns=mono>0 ? u64(mono):0;
     packet.coordinate_profile=candidate_profile?A081_CONTROLLER_PROFILE_OPENVR_HEAD_RAW:A081_CONTROLLER_PROFILE_UNVERIFIED;
     if(linked(hands[side]) && fresh(last_transport,a.mono))packet.flags=A081_CONTROLLER_CONNECTED;
+    a081_controller_pose_set_controls(&packet, &hands[side].controls, packet.send_monotonic_ns);
     if (accepted) packet.flags|=A081_CONTROLLER_ORIENTATION_VALID|
         A081_CONTROLLER_POSITION_VALID|A081_CONTROLLER_CLOCK_VALID|A081_CONTROLLER_SDK_POSE;
     // The pinned SDK's confidence is exactly1 only inside its recent visual

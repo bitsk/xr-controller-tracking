@@ -1,3 +1,10 @@
+xr-controller-tracking (0.1.5) unstable; urgency=medium
+
+  * Publish fresh radio buttons and axes through the production v2 pose ABI.
+  * Keep controls independent of optical tracking resets and SDK pose validity.
+
+ -- bits <bigbits@hackx.cc>  Tue, 17 Nov 2026 10:05:03 +0800
+
 xr-controller-tracking (0.1.4) unstable; urgency=medium
 
   * Package the bounded SDK log shim and consume the canonical FastRPC UAPI.
